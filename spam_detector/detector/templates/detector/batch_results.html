@@ -1,0 +1,74 @@
+{% extends 'detector/base.html' %}
+{% block title %}Batch Results — SpamShield AI{% endblock %}
+
+{% block content %}
+<div class="page-batch-results">
+
+  <div class="page-header">
+    <a href="{% url 'index' %}" class="back-link">← Back to Detector</a>
+    <h1 class="page-title">Batch Results</h1>
+    <p class="page-sub">Analyzed <strong>{{ filename }}</strong></p>
+  </div>
+
+  <!-- Summary Cards -->
+  <div class="summary-cards">
+    <div class="glass-card summary-card">
+      <div class="summary-num">{{ total }}</div>
+      <div class="summary-label">Total Messages</div>
+    </div>
+    <div class="glass-card summary-card spam-card">
+      <div class="summary-num spam-color">{{ spam_count }}</div>
+      <div class="summary-label">Spam Detected</div>
+    </div>
+    <div class="glass-card summary-card ham-card">
+      <div class="summary-num ham-color">{{ ham_count }}</div>
+      <div class="summary-label">Ham (Clean)</div>
+    </div>
+    <div class="glass-card summary-card">
+      <div class="summary-num">
+        {% if total %}{{ spam_count|floatformat:0 }}{% else %}0{% endif %}%
+      </div>
+      <div class="summary-label">Spam Rate</div>
+    </div>
+  </div>
+
+  <!-- Results Table -->
+  <div class="glass-card table-card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="card-icon">📋</span> All Results</h2>
+      <a href="{% url 'history' %}?label=spam" class="view-all-link">View History →</a>
+    </div>
+    <div class="table-wrap">
+      <table class="results-table" aria-label="Batch prediction results">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Verdict</th>
+            <th scope="col">Confidence</th>
+            <th scope="col">Spam %</th>
+            <th scope="col">Ham %</th>
+            <th scope="col">Message Preview</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for r in results %}
+          <tr class="{% if r.label == 'spam' %}row-spam{% else %}row-ham{% endif %}">
+            <td class="td-num">{{ forloop.counter }}</td>
+            <td>
+              <span class="badge {% if r.label == 'spam' %}badge-spam{% else %}badge-ham{% endif %}">
+                {% if r.label == 'spam' %}🚫{% else %}✅{% endif %} {{ r.label|upper }}
+              </span>
+            </td>
+            <td class="td-conf">{{ r.confidence }}%</td>
+            <td class="td-spam">{{ r.spam_prob }}%</td>
+            <td class="td-ham">{{ r.ham_prob }}%</td>
+            <td class="td-text">{{ r.text|truncatechars:100 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="AI-powered spam detection using Naive Bayes and TF-IDF — classify emails and messages instantly." />
+  <title>{% block title %}SpamShield AI{% endblock %}</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  {% load static %}
+  <link rel="stylesheet" href="{% static 'detector/style.css' %}" />
+</head>
+<body>
+
+  <!-- ── Animated background orbs ── -->
+  <div class="bg-orbs" aria-hidden="true">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- ── Navigation ── -->
+  <nav class="navbar" role="navigation" aria-label="Main navigation">
+    <div class="nav-container">
+      <a href="{% url 'index' %}" class="nav-brand" aria-label="SpamShield AI home">
+        <span class="brand-icon" aria-hidden="true">🛡️</span>
+        <span class="brand-text">SpamShield <span class="brand-accent">AI</span></span>
+      </a>
+
+      <ul class="nav-links" role="list">
+        <li>
+          <a href="{% url 'index' %}" class="nav-link {% if request.resolver_match.url_name == 'index' %}active{% endif %}" id="nav-home">
+            <span class="nav-icon">🔍</span> Detect
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'dashboard' %}" class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" id="nav-dashboard">
+            <span class="nav-icon">📊</span> Dashboard
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'history' %}" class="nav-link {% if request.resolver_match.url_name == 'history' %}active{% endif %}" id="nav-history">
+            <span class="nav-icon">📋</span> History
+          </a>
+        </li>
+      </ul>
+    </div>
+  </nav>
+
+  <!-- ── Django messages ── -->
+  {% if messages %}
+  <div class="toast-container" role="alert" aria-live="polite">
+    {% for message in messages %}
+    <div class="toast toast-{{ message.tags }}" id="toast-{{ forloop.counter }}">
+      <span class="toast-icon">{% if message.tags == 'error' %}❌{% elif message.tags == 'warning' %}⚠️{% else %}✅{% endif %}</span>
+      <span class="toast-text">{{ message }}</span>
+      <button class="toast-close" onclick="this.parentElement.remove()" aria-label="Close notification">×</button>
+    </div>
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ── Main content ── -->
+  <main class="main-content" id="main-content">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- ── Footer ── -->
+  <footer class="footer" role="contentinfo">
+    <div class="footer-inner">
+      <p>
+        Built with <span aria-label="love">❤️</span> using
+        <strong>Django</strong> · <strong>Scikit-Learn</strong> · <strong>Naive Bayes</strong>
+      </p>
+      <p class="footer-sub">MultinomialNB + TF-IDF — trained on 83,448 emails</p>
+    </div>
+  </footer>
+
+  {% load static %}
+  <script src="{% static 'detector/app.js' %}"></script>
+  {% block extra_js %}{% endblock %}
+</body>
+</html>

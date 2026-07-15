@@ -1,0 +1,126 @@
+{% extends 'detector/base.html' %}
+{% block title %}History — SpamShield AI{% endblock %}
+
+{% block content %}
+<div class="page-history">
+
+  <div class="page-header">
+    <h1 class="page-title">📋 Prediction History</h1>
+    <p class="page-sub">All {{ total }} predictions — <span class="spam-color">{{ spam_count }} spam</span> / <span class="ham-color">{{ ham_count }} ham</span></p>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <form method="GET" action="{% url 'history' %}" class="glass-card filter-bar" role="search" aria-label="Filter predictions">
+    <div class="filter-group">
+      <label for="search-input" class="sr-only">Search text</label>
+      <input
+        type="text"
+        id="search-input"
+        name="q"
+        value="{{ search_query }}"
+        placeholder="🔍  Search message text…"
+        class="search-input"
+        aria-label="Search by message text"
+      />
+    </div>
+    <div class="filter-group filter-radios" role="group" aria-label="Filter by label">
+      <label class="radio-pill {% if label_filter == '' %}active{% endif %}">
+        <input type="radio" name="label" value="" {% if label_filter == '' %}checked{% endif %} /> All
+      </label>
+      <label class="radio-pill spam-radio {% if label_filter == 'spam' %}active{% endif %}">
+        <input type="radio" name="label" value="spam" {% if label_filter == 'spam' %}checked{% endif %} /> 🚫 Spam
+      </label>
+      <label class="radio-pill ham-radio {% if label_filter == 'ham' %}active{% endif %}">
+        <input type="radio" name="label" value="ham" {% if label_filter == 'ham' %}checked{% endif %} /> ✅ Ham
+      </label>
+    </div>
+    <div class="filter-actions">
+      <button type="submit" class="btn-primary btn-sm" aria-label="Apply filters">Filter</button>
+      <a href="{% url 'history' %}" class="btn-secondary btn-sm" aria-label="Clear all filters">Clear</a>
+    </div>
+  </form>
+
+  <!-- Table -->
+  <div class="glass-card table-card">
+    {% if page_obj %}
+    <div class="table-wrap">
+      <table class="results-table" aria-label="Prediction history">
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Verdict</th>
+            <th scope="col">Confidence</th>
+            <th scope="col">Source</th>
+            <th scope="col">Date & Time</th>
+            <th scope="col">Message Preview</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in page_obj %}
+          <tr class="{% if item.label == 'spam' %}row-spam{% else %}row-ham{% endif %}">
+            <td class="td-num">#{{ item.id }}</td>
+            <td>
+              <span class="badge {% if item.label == 'spam' %}badge-spam{% else %}badge-ham{% endif %}">
+                {% if item.label == 'spam' %}🚫{% else %}✅{% endif %} {{ item.label|upper }}
+              </span>
+            </td>
+            <td class="td-conf">
+              <div class="mini-bar-wrap">
+                <div class="mini-bar {% if item.label == 'spam' %}mini-bar-spam{% else %}mini-bar-ham{% endif %}"
+                     style="width: {{ item.confidence }}%"></div>
+              </div>
+              {{ item.confidence }}%
+            </td>
+            <td>
+              <span class="source-badge {% if item.source == 'batch' %}source-batch{% else %}source-manual{% endif %}">
+                {{ item.source }}
+              </span>
+            </td>
+            <td class="td-date">{{ item.created_at|date:"d M Y, H:i" }}</td>
+            <td class="td-text">{{ item.text|truncatechars:80 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    {% if page_obj.has_other_pages %}
+    <nav class="pagination" aria-label="Page navigation">
+      {% if page_obj.has_previous %}
+        <a href="?page={{ page_obj.previous_page_number }}&label={{ label_filter }}&q={{ search_query }}"
+           class="page-btn" aria-label="Previous page">← Prev</a>
+      {% endif %}
+      <span class="page-info" aria-current="page">
+        Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+      </span>
+      {% if page_obj.has_next %}
+        <a href="?page={{ page_obj.next_page_number }}&label={{ label_filter }}&q={{ search_query }}"
+           class="page-btn" aria-label="Next page">Next →</a>
+      {% endif %}
+    </nav>
+    {% endif %}
+
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-icon" aria-hidden="true">🕳️</div>
+      <p class="empty-title">No predictions yet</p>
+      <p class="empty-sub">Head back to the <a href="{% url 'index' %}">Detector</a> to analyze your first message.</p>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- Danger zone -->
+  {% if total %}
+  <div class="glass-card danger-zone">
+    <h3 class="danger-title">⚠️ Danger Zone</h3>
+    <p>Permanently delete all {{ total }} prediction records from the database.</p>
+    <form method="POST" action="{% url 'delete_history' %}" onsubmit="return confirm('Are you sure? This cannot be undone.')">
+      {% csrf_token %}
+      <button type="submit" class="btn-danger" aria-label="Delete all history">🗑️ Clear All History</button>
+    </form>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}

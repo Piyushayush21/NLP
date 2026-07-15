@@ -1,0 +1,256 @@
+{% extends 'detector/base.html' %}
+{% block title %}Dashboard — SpamShield AI{% endblock %}
+
+{% block content %}
+<div class="page-dashboard">
+
+  <div class="page-header">
+    <h1 class="page-title">📊 Analytics Dashboard</h1>
+    <p class="page-sub">Real-time insights from {{ total }} predictions</p>
+  </div>
+
+  {% if total == 0 %}
+  <div class="glass-card empty-state">
+    <div class="empty-icon">📊</div>
+    <p class="empty-title">No data yet</p>
+    <p class="empty-sub">Analyze some messages on the <a href="{% url 'index' %}">Detector</a> page to see stats here.</p>
+  </div>
+  {% else %}
+
+  <!-- ── KPI Cards ── -->
+  <div class="kpi-grid">
+    <div class="glass-card kpi-card">
+      <div class="kpi-icon" aria-hidden="true">📬</div>
+      <div class="kpi-num">{{ total }}</div>
+      <div class="kpi-label">Total Analyzed</div>
+    </div>
+    <div class="glass-card kpi-card kpi-spam">
+      <div class="kpi-icon" aria-hidden="true">🚫</div>
+      <div class="kpi-num spam-color">{{ spam_count }}</div>
+      <div class="kpi-label">Spam Detected <span class="kpi-pct">({{ spam_pct }}%)</span></div>
+    </div>
+    <div class="glass-card kpi-card kpi-ham">
+      <div class="kpi-icon" aria-hidden="true">✅</div>
+      <div class="kpi-num ham-color">{{ ham_count }}</div>
+      <div class="kpi-label">Ham (Clean) <span class="kpi-pct">({{ ham_pct }}%)</span></div>
+    </div>
+    <div class="glass-card kpi-card">
+      <div class="kpi-icon" aria-hidden="true">🎯</div>
+      <div class="kpi-num">{{ avg_confidence }}%</div>
+      <div class="kpi-label">Avg Confidence</div>
+    </div>
+    <div class="glass-card kpi-card">
+      <div class="kpi-icon" aria-hidden="true">🔥</div>
+      <div class="kpi-num spam-color">{{ avg_spam_conf }}%</div>
+      <div class="kpi-label">Avg Spam Confidence</div>
+    </div>
+    <div class="glass-card kpi-card">
+      <div class="kpi-icon" aria-hidden="true">💚</div>
+      <div class="kpi-num ham-color">{{ avg_ham_conf }}%</div>
+      <div class="kpi-label">Avg Ham Confidence</div>
+    </div>
+  </div>
+
+  <!-- ── Charts ── -->
+  <div class="charts-grid">
+
+    <!-- Doughnut: Spam vs Ham -->
+    <div class="glass-card chart-card">
+      <h2 class="card-title"><span class="card-icon">🍩</span> Spam vs Ham</h2>
+      <div class="chart-container" style="max-height:280px">
+        <canvas id="doughnutChart" aria-label="Spam vs Ham pie chart" role="img"></canvas>
+      </div>
+      <div class="donut-legend">
+        <div class="legend-item">
+          <span class="legend-dot spam-dot"></span>
+          <span>Spam — {{ spam_count }} ({{ spam_pct }}%)</span>
+        </div>
+        <div class="legend-item">
+          <span class="legend-dot ham-dot"></span>
+          <span>Ham — {{ ham_count }} ({{ ham_pct }}%)</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Line chart: Activity over 14 days -->
+    <div class="glass-card chart-card chart-wide">
+      <h2 class="card-title"><span class="card-icon">📈</span> Activity (Last 14 Days)</h2>
+      <div class="chart-container" style="max-height:280px">
+        <canvas id="lineChart" aria-label="Daily activity line chart" role="img"></canvas>
+      </div>
+    </div>
+
+    <!-- Bar chart: Confidence distribution -->
+    <div class="glass-card chart-card">
+      <h2 class="card-title"><span class="card-icon">📊</span> Confidence Distribution</h2>
+      <div class="chart-container" style="max-height:280px">
+        <canvas id="barChart" aria-label="Confidence distribution bar chart" role="img"></canvas>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Recent Activity ── -->
+  <div class="glass-card">
+    <div class="card-header">
+      <h2 class="card-title"><span class="card-icon">🕐</span> Recent Predictions</h2>
+      <a href="{% url 'history' %}" class="view-all-link">View All →</a>
+    </div>
+    <div class="table-wrap">
+      <table class="results-table" aria-label="Recent predictions">
+        <thead>
+          <tr>
+            <th scope="col">Verdict</th>
+            <th scope="col">Confidence</th>
+            <th scope="col">Source</th>
+            <th scope="col">Date</th>
+            <th scope="col">Message</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in recent %}
+          <tr class="{% if item.label == 'spam' %}row-spam{% else %}row-ham{% endif %}">
+            <td>
+              <span class="badge {% if item.label == 'spam' %}badge-spam{% else %}badge-ham{% endif %}">
+                {{ item.label|upper }}
+              </span>
+            </td>
+            <td class="td-conf">{{ item.confidence }}%</td>
+            <td><span class="source-badge">{{ item.source }}</span></td>
+            <td class="td-date">{{ item.created_at|date:"d M, H:i" }}</td>
+            <td class="td-text">{{ item.text|truncatechars:80 }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+(function() {
+  const spamCount = {{ spam_count }};
+  const hamCount  = {{ ham_count }};
+  const dateLabels  = {{ date_labels|safe }};
+  const spamSeries  = {{ spam_series|safe }};
+  const hamSeries   = {{ ham_series|safe }};
+  const confLabels  = {{ conf_labels|safe }};
+  const confData    = {{ conf_data|safe }};
+
+  const gridColor = 'rgba(255,255,255,0.06)';
+  const tickColor = 'rgba(255,255,255,0.45)';
+
+  // ── Doughnut ─────────────────────────────────────────────────────────
+  const dCtx = document.getElementById('doughnutChart');
+  if (dCtx) {
+    new Chart(dCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Spam', 'Ham'],
+        datasets: [{
+          data: [spamCount, hamCount],
+          backgroundColor: ['rgba(255, 75, 110, 0.85)', 'rgba(52, 211, 153, 0.85)'],
+          borderColor: ['rgba(255, 75, 110, 1)', 'rgba(52, 211, 153, 1)'],
+          borderWidth: 2,
+          hoverOffset: 8,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        cutout: '65%',
+        plugins: { legend: { display: false } },
+      },
+    });
+  }
+
+  // ── Line ─────────────────────────────────────────────────────────────
+  const lCtx = document.getElementById('lineChart');
+  if (lCtx) {
+    new Chart(lCtx, {
+      type: 'line',
+      data: {
+        labels: dateLabels,
+        datasets: [
+          {
+            label: 'Spam',
+            data: spamSeries,
+            borderColor: 'rgba(255, 75, 110, 1)',
+            backgroundColor: 'rgba(255, 75, 110, 0.12)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: 'rgba(255, 75, 110, 1)',
+            pointRadius: 4,
+          },
+          {
+            label: 'Ham',
+            data: hamSeries,
+            borderColor: 'rgba(52, 211, 153, 1)',
+            backgroundColor: 'rgba(52, 211, 153, 0.12)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: 'rgba(52, 211, 153, 1)',
+            pointRadius: 4,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: { labels: { color: tickColor, font: { family: 'Inter', size: 12 } } },
+        },
+        scales: {
+          x: { ticks: { color: tickColor, maxRotation: 45 }, grid: { color: gridColor } },
+          y: { ticks: { color: tickColor, stepSize: 1 }, grid: { color: gridColor }, beginAtZero: true },
+        },
+      },
+    });
+  }
+
+  // ── Bar ──────────────────────────────────────────────────────────────
+  const bCtx = document.getElementById('barChart');
+  if (bCtx) {
+    new Chart(bCtx, {
+      type: 'bar',
+      data: {
+        labels: confLabels,
+        datasets: [{
+          label: 'Predictions',
+          data: confData,
+          backgroundColor: [
+            'rgba(139, 92, 246, 0.75)',
+            'rgba(99, 102, 241, 0.75)',
+            'rgba(59, 130, 246, 0.75)',
+            'rgba(16, 185, 129, 0.75)',
+            'rgba(52, 211, 153, 0.75)',
+          ],
+          borderColor: [
+            'rgba(139, 92, 246, 1)',
+            'rgba(99, 102, 241, 1)',
+            'rgba(59, 130, 246, 1)',
+            'rgba(16, 185, 129, 1)',
+            'rgba(52, 211, 153, 1)',
+          ],
+          borderWidth: 2,
+          borderRadius: 6,
+        }],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: tickColor }, grid: { color: gridColor } },
+          y: { ticks: { color: tickColor, stepSize: 1 }, grid: { color: gridColor }, beginAtZero: true },
+        },
+      },
+    });
+  }
+})();
+</script>
+{% endblock %}
